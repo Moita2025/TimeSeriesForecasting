@@ -14,7 +14,7 @@ print(f"Using device: {device}")
 # ────────────────────────────────────────────────
 # KAN 模型封装（兼容你的 Utils）
 # ────────────────────────────────────────────────
-class KANForecaster(nn.Module):
+class KANForecasterStd(nn.Module):
     def __init__(self, input_size, hidden_dim=16, output_size=1, grid=5, k=3):
         super().__init__()
         self.kan = KAN(
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     val_loader   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
     # 模型
-    model = KANForecaster(
+    model = KANForecasterStd(
         input_size=len(feature_cols),
         hidden_dim=HIDDEN_DIM,
         output_size=PRED_LENGTH,
