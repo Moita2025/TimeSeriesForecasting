@@ -58,8 +58,8 @@ if __name__ == "__main__":
     print(f"Input dimension for KAN: {len(feature_cols)}")
 
     # 构建序列（seq=1）
-    X_tr_seq, y_tr_seq = create_sequences(X_train.values, y_train, SEQ_LENGTH, PRED_LENGTH)
-    X_ts_seq, y_ts_seq = create_sequences(X_test.values,  y_test,  SEQ_LENGTH, PRED_LENGTH)
+    X_tr_seq, y_tr_seq = create_sequences(X_train, y_train, SEQ_LENGTH, PRED_LENGTH)
+    X_ts_seq, y_ts_seq = create_sequences(X_test,  y_test,  SEQ_LENGTH, PRED_LENGTH)
 
     # 验证集
     val_ratio = 0.15

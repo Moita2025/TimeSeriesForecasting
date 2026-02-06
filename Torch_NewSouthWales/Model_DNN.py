@@ -67,8 +67,8 @@ if __name__ == "__main__":
     print(f"Input size for DNN: SEQ_LENGTH({SEQ_LENGTH}) * num_features({len(feature_cols)}) = {SEQ_LENGTH * len(feature_cols)}")
 
     # 建立序列（复用 Utils，完全一致）
-    X_tr_seq, y_tr_seq = create_sequences(X_train.values, y_train, SEQ_LENGTH, PRED_LENGTH)
-    X_ts_seq, y_ts_seq = create_sequences(X_test.values,  y_test,  SEQ_LENGTH, PRED_LENGTH)
+    X_tr_seq, y_tr_seq = create_sequences(X_train, y_train, SEQ_LENGTH, PRED_LENGTH)
+    X_ts_seq, y_ts_seq = create_sequences(X_test,  y_test,  SEQ_LENGTH, PRED_LENGTH)
 
     # 分出驗證集（复用 BiLSTM 逻辑）
     val_ratio = 0.15
