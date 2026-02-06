@@ -1,3 +1,6 @@
 Torch_NewSouthWales/2012-2013 Solar home electricity data v2.csv
 /Torch_NewSouthWales/model
 *.pyc
+/Torch_NewSouthWales/LLM 聊天记录
+/Torch_NewSouthWales/代码叠层
+/Torch_NewSouthWales/结果
