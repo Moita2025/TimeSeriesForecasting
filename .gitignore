@@ -1,8 +1,8 @@
-Torch_NewSouthWales/2012-2013 Solar home electricity data v2.csv
-/Torch_NewSouthWales/model
+th-nsw-solar-home/2012-2013 Solar home electricity data v2.csv
+/th-nsw-solar-home/model
 *.pyc
-/Torch_NewSouthWales/LLM 聊天记录
-/Torch_NewSouthWales/代码叠层
-/Torch_NewSouthWales/结果
-/Torch_NewSouthWales/spline_csv
-/Torch_NewSouthWales/spline_plots
+/th-nsw-solar-home/LLM 聊天记录
+/th-nsw-solar-home/代码叠层
+/th-nsw-solar-home/结果
+/th-nsw-solar-home/spline_csv
+/th-nsw-solar-home/spline_plots

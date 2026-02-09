@@ -4,13 +4,13 @@ A comprehensive collection of time series forecasting models implemented in both
 
 ## Project Structure
 
-### TensorFlow_Synthetic
+### tf-syndt
 
 - Implements univariate/multivariate time series models on synthetic electrical load data
 - Includes statistical (ARIMA/ARIMAX) and deep learning models (BiLSTM, AM-BiLSTM, TPA-BiLSTM, CNN-GRU)
 - Provides utility functions for time series preprocessing, stationarity testing, and visualization
 
-### Torch_NewSouthWales
+### th-nsw-solar-home
 
 - Implements advanced time series models on real solar home electricity data from New South Wales
 - Built with PyTorch, covering diverse models (BiLSTM variants, CNN-GRU, DNN, iTransformer, tree-based models)
@@ -28,12 +28,12 @@ A comprehensive collection of time series forecasting models implemented in both
 
 ## Requirements
 
-### TensorFlow_Synthetic
+### tf-syndt
 
 - Python 3.x
 - numpy, pandas, scikit-learn, statsmodels, tensorflow/keras, matplotlib, seaborn
 
-### Torch_NewSouthWales
+### th-nsw-solar-home
 
 - Python 3.x
 - numpy, pandas, scikit-learn, torch, matplotlib, seaborn, xgboost, scikit-learn
@@ -46,12 +46,14 @@ A comprehensive collection of time series forecasting models implemented in both
 
 ## 项目结构
 
-### TensorFlow_Synthetic
+### tf-syndt
+
 - 基于合成电力负荷数据实现单/多变量时间序列模型
 - 包含统计模型（ARIMA/ARIMAX）和深度学习模型（BiLSTM、AM-BiLSTM、TPA-BiLSTM、CNN-GRU）
 - 提供时间序列预处理、平稳性检验、可视化等工具函数
 
-### Torch_NewSouthWales
+### th-nsw-solar-home
+
 - 基于新南威尔士州真实居民光伏用电数据实现进阶时间序列模型
 - 基于 PyTorch 构建，覆盖多类模型（BiLSTM 变体、CNN-GRU、DNN、iTransformer、树基模型）
 - 包含面向真实世界数据集的预处理流程
@@ -69,12 +71,12 @@ A comprehensive collection of time series forecasting models implemented in both
 
 ## 依赖环境
 
-### TensorFlow_Synthetic
+### tf-syndt
 
 - Python 3.x
 - numpy, pandas, scikit-learn, statsmodels, tensorflow/keras, matplotlib, seaborn
 
-### Torch_NewSouthWales
+### th-nsw-solar-home
 
 - Python 3.x
 - numpy, pandas, scikit-learn, torch, matplotlib, seaborn, xgboost, scikit-learn
