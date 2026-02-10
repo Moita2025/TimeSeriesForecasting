@@ -1,13 +1,14 @@
 import torch
 from data_module.nsw_datamodule_halfhour import NSWHalfHourDataModule
-from models.cnn_gru import CNNGRUForecaster
 from trainer import train_model
 from rolling_eval import evaluate_rolling_forecast
 from tasks.next_48h_forecast import Next48HalfHoursForecastTask
+from config import model_configs
+from models import create_model
 
 def main():
-    # ── 配置（之後建議改 yaml 或 dataclass） ─────────────────────────────
-    config = {
+    # ── 共用資料與訓練設定 ────────────────────────────────────────
+    common_config = {
         "data_file":      "data_processed/nsw_halfhour_201207_201306.csv",
         "seq_len":        336,
         "horizon":        48,
@@ -17,16 +18,16 @@ def main():
         "epochs":         100,
         "lr":             0.0008,
         "patience":       12,
-
-        # 模型參數
-        "hidden_size":    128,
-        "num_gru_layers": 2,
-        "num_cnn_filters":64,
-        "kernel_size":    3,
-        "dropout":        0.15,
-        "bidirectional":  False,
-        "use_pool":       False,
+        "grad_clip":      1.0,
     }
+
+    # ── 模型選擇與各自超參 ─────────────────────────────────────────
+    model_type = "cnn_gru"          # 可切換成 "cnn_gru" 或 "bilstm" 或未來其他模型
+
+    if model_type not in model_configs:
+        raise ValueError(f"Unknown model_type: {model_type}. Available: {list(model_configs.keys())}")
+    
+    config = {**common_config, **model_configs[model_type]}
 
     print("=== NSW 下一天 48 半小時 需求與價格預測 ===")
     print(f"序列長度: {config['seq_len']}   預測長度: {config['horizon']}")
@@ -45,19 +46,15 @@ def main():
     # ── 2. 模型 ──────────────────────────────────────────────────────
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = CNNGRUForecaster(
-        input_size      = datamodule.input_size,
-        hidden_size     = config["hidden_size"],
-        num_gru_layers  = config["num_gru_layers"],
-        num_cnn_filters = config["num_cnn_filters"],
-        kernel_size     = config["kernel_size"],
-        dropout         = config["dropout"],
-        bidirectional   = config["bidirectional"],
-        use_pool        = config["use_pool"],
-        horizon         = config["horizon"],
-        n_targets       = 2,   # demand + price
-    ).to(device)
+    model = create_model(
+        model_type  = model_type,
+        input_size  = datamodule.input_size,
+        **config    # 把所有超參都傳進去，模型內部會自己挑需要的 key
+    )
 
+    model = model.to(device)
+
+    print(f"選用模型：{model_type.upper()}")
     print(f"模型參數量約: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
     print(f"使用裝置: {device}")
 
@@ -92,7 +89,7 @@ def main():
     preds_processed = task.postprocess_predictions(preds_phys)
 
     # 格式化輸出
-    print("\n" + task.format_metrics(metrics))
+    # print("\n" + task.format_metrics(metrics))
 
     # 未來可加：
     # save_predictions(preds_processed, acts_phys, "results/")

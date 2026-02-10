@@ -128,13 +128,13 @@ def train_model(
 
             msg = (f"Epoch {(epoch+1):02d}/{epochs} | "
                    f"Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f} | "
-                   f"Best Val: {best_val_loss:.6f} | Patience: {patience_counter}/{patience}")
+                   f"Best Val: {best_val_loss:.6f} | Patience: {patience_counter:02d}/{patience}")
 
             if scheduler is not None:
                 current_lr = optimizer.param_groups[0]['lr']
                 msg += f" | LR: {current_lr:.2e}"
 
-            msg += f" | Elapsed: {elapsed:.1f}s ETA: {eta:.0f}s"
+            msg += f" | Elapsed: {elapsed:3.1f}s ETA: {eta:.0f}s"
             print(msg)
 
         if patience_counter >= patience:
