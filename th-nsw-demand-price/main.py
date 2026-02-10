@@ -22,7 +22,7 @@ def main():
     }
 
     # ── 模型選擇與各自超參 ─────────────────────────────────────────
-    model_type = "cnn_gru"          # 可切換成 "cnn_gru" 或 "bilstm" 或未來其他模型
+    model_type = "am_bilstm"          # 可切換成 "cnn_gru" 或 "bilstm" 或未來其他模型
 
     if model_type not in model_configs:
         raise ValueError(f"Unknown model_type: {model_type}. Available: {list(model_configs.keys())}")

@@ -2,6 +2,9 @@ from typing import Optional
 
 from .cnn_gru import CNNGRUForecaster
 from .bilstm  import BiLSTMForecaster
+from .tpa_bilstm import TPABiLSTMForecaster
+from .am_bilstm  import AMBiLSTMForecaster
+
 # 未來新增模型就 import 進來，例如：
 # from .transformer import TransformerForecaster
 
@@ -55,19 +58,33 @@ def create_model(
 
     if model_type == "cnn_gru":
         return CNNGRUForecaster(
-            input_size      = input_size,
-            horizon         = horizon,
-            n_targets       = n_targets,
+            input_size = input_size,
+            horizon = horizon,
+            n_targets = n_targets,
+            **model_kwargs
+        )
+    elif model_type == "bilstm":
+        return BiLSTMForecaster(
+            input_size = input_size,
+            horizon = horizon,
+            n_targets = n_targets,
+            **model_kwargs
+        )
+    elif model_type_lower == "tpa_bilstm":
+        return TPABiLSTMForecaster(
+            input_size = input_size, 
+            horizon = horizon, 
+            n_targets = n_targets, 
+            **model_kwargs
+        )
+    elif model_type_lower == "am_bilstm":
+        return AMBiLSTMForecaster(
+            input_size = input_size, 
+            horizon = horizon, 
+            n_targets = n_targets, 
             **model_kwargs
         )
 
-    elif model_type == "bilstm":
-        return BiLSTMForecaster(
-            input_size    = input_size,
-            horizon       = horizon,
-            n_targets     = n_targets,
-            **model_kwargs
-        )
 
     # 未來新增模型只要在這裡加一條 elif 即可
     # elif model_type == "transformer":

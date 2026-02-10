@@ -15,6 +15,17 @@ model_configs = {
         "bidirectional":  True,
     },
     # 未來可加 "transformer": {...}, "tcn": {...} 等
+    "tpa_bilstm": {
+        "hidden_size":    128,
+        "num_layers":     2,
+        "dropout":        0.20,
+        "seq_len":        336,
+    },
+    "am_bilstm": {
+        "hidden_size":    128,
+        "num_layers":     2,
+        "dropout":        0.20,
+    },
 }
 
 # 自动生成 model_accepted_keys
