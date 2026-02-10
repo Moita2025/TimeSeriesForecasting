@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 
 class CNNGRUForecaster(nn.Module):
     def __init__(self, config: dict):
@@ -17,6 +18,18 @@ class CNNGRUForecaster(nn.Module):
         # 输出维度改为 48 × 2
         self.horizon        = config.get('horizon', 48)
         self.output_size    = 2 * self.horizon   # 96
+
+        # 新增：记录训练集的目标范围（后续在 prepare_data 传进来，或在这里硬编码）
+        # 更好的做法是在 config 里传入 min/max
+        self.demand_min = config.get('demand_min', 3000.0)   # 后续从训练集取
+        self.demand_max = config.get('demand_max', 11000.0)
+        self.price_min  = config.get('price_min', -200.0)
+        self.price_max  = config.get('price_max',  1500.0)
+
+        # self.fc = nn.Linear(gru_output_dim, self.output_size)
+
+        # 改用 Sigmoid 压缩到 [0,1]
+        self.sigmoid = nn.Sigmoid()
 
         # CNN 部分
         self.conv1 = nn.Conv1d(
@@ -66,10 +79,9 @@ class CNNGRUForecaster(nn.Module):
         out = gru_out[:, -1, :]          # 最后时间步
         
         out = self.dropout_layer(out)
-        out = self.fc(out)              
-        
-        # reshape 成 (batch, horizon, targets)
+        out = self.fc(out)                      # (batch, 96)
+        # out = self.sigmoid(out)                 # → [0,1]
+
+        # reshape & 映射到物理范围
         out = out.view(-1, self.horizon, 2)
-        
-        # self.softplus(out)             # 建议注释掉或删除
         return out

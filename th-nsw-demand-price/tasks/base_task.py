@@ -79,6 +79,26 @@ class BaseForecastTask:
 
             print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f}")
 
+            # ------------------ 新增：每 5 epoch 打印一次 val 反归一化指标 ------------------
+            if (epoch + 1) % 5 == 0 or epoch == epochs - 1:
+                model.eval()
+                val_preds = []
+                val_trues = []
+                with torch.no_grad():
+                    for Xb, yb in val_loader:
+                        Xb = Xb.to(device)
+                        pred = model(Xb).cpu().numpy()          # (b,48,2) scaled
+                        val_preds.append(pred)
+                        val_trues.append(yb.numpy())
+
+                val_preds = np.concatenate(val_preds, axis=0)
+                val_trues = np.concatenate(val_trues, axis=0)
+
+                # 假设你能从 task 拿到 scaler（或临时传进来）
+                # 这里先用最粗暴的方式打印 bias
+                print(f"  Val Demand mean pred: {val_preds[...,0].mean():.1f} (scaled)")
+                print(f"  Val Demand mean true: {val_trues[...,0].mean():.1f} (scaled)")
+
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 best_state = model.state_dict()

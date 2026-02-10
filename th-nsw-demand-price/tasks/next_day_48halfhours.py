@@ -13,85 +13,88 @@ class NextDay48HalfHoursRRP(BaseForecastTask):
         # 覆盖默认目标
         self.target_cols = ["TOTALDEMAND", "RRP"]   # 两个目标
         self.target_dim = len(self.target_cols)
+        self.scaler_demand = MinMaxScaler()
+        self.scaler_price  = MinMaxScaler()
 
     def prepare_data(self) -> Tuple:
         df = self.load_data()
         df = self.prepare_features(df)
 
-        # 多目标
-        targets = df[self.target_cols].values.astype(np.float32)   # shape: (n_timesteps, 2)
-
-        # 特征列（排除目标和非特征列）
+        targets = df[self.target_cols].values.astype(np.float32)   # (n, 2)
         exclude_cols = self.target_cols + ["SETTLEMENTDATE", "date"]
         feature_cols = [c for c in df.columns if c not in exclude_cols]
         self.feature_cols = feature_cols
-
         X = df[feature_cols].values.astype(np.float32)
 
-        # 时间顺序切分（更建议按自然日切分，见后续建议）
-        train_size = int(len(X) * self.train_ratio)
-        X_train_raw = X[:train_size]
-        X_test_raw  = X[train_size:]
-        y_train_raw = targets[:train_size]
-        y_test_raw  = targets[train_size:]
+        # ── 关键改动：严格按原始时间序列切分 ───────────────────────────────
+        n = len(X)
+        train_end = int(n * 0.7)          # 建议先用70%训练，后面可调
+        val_end   = int(n * 0.85)         # 15%验证
+        # test: val_end → end
 
-        # 缩放 X（特征）
+        X_train_raw = X[:train_end]
+        y_train_raw = targets[:train_end]
+
+        X_val_raw   = X[train_end:val_end]
+        y_val_raw   = targets[train_end:val_end]
+
+        X_test_raw  = X[val_end:]
+        y_test_raw  = targets[val_end:]
+
+        # 分别 fit scaler（只用训练集）
         self.scaler_X.fit(X_train_raw)
         X_train = self.scaler_X.transform(X_train_raw)
+        X_val   = self.scaler_X.transform(X_val_raw)
         X_test  = self.scaler_X.transform(X_test_raw)
 
-        # 分别缩放两个目标（推荐做法，避免量纲差异太大）
-        self.scaler_demand = MinMaxScaler()
-        self.scaler_price  = MinMaxScaler()
+        # 分别缩放两个目标（只fit训练集）
+        self.scaler_demand.fit(y_train_raw[:, 0].reshape(-1, 1))
+        self.scaler_price.fit( y_train_raw[:, 1].reshape(-1, 1))
 
-        y_train_demand = self.scaler_demand.fit_transform(
-            y_train_raw[:, 0].reshape(-1, 1)
-        ).ravel()
-        y_train_price = self.scaler_price.fit_transform(
-            y_train_raw[:, 1].reshape(-1, 1)
-        ).ravel()
+        y_train = np.column_stack([
+            self.scaler_demand.transform(y_train_raw[:, 0].reshape(-1, 1)).ravel(),
+            self.scaler_price.transform( y_train_raw[:, 1].reshape(-1, 1)).ravel()
+        ])
 
-        y_test_demand = self.scaler_demand.transform(
-            y_test_raw[:, 0].reshape(-1, 1)
-        ).ravel()
-        y_test_price = self.scaler_price.transform(
-            y_test_raw[:, 1].reshape(-1, 1)
-        ).ravel()
+        y_val = np.column_stack([
+            self.scaler_demand.transform(y_val_raw[:, 0].reshape(-1, 1)).ravel(),
+            self.scaler_price.transform( y_val_raw[:, 1].reshape(-1, 1)).ravel()
+        ])
 
-        # 合并成 (n, 2)
-        y_train = np.column_stack([y_train_demand, y_train_price])
-        y_test  = np.column_stack([y_test_demand,  y_test_price])
+        y_test = np.column_stack([
+            self.scaler_demand.transform(y_test_raw[:, 0].reshape(-1, 1)).ravel(),
+            self.scaler_price.transform( y_test_raw[:, 1].reshape(-1, 1)).ravel()
+        ])
+
+        print(f"序列切分：train:{len(X_train):5d}  val:{len(X_val):5d}  test:{len(X_test):5d}")
+
+        # ── 创建序列 ────────────────────────────────────────────────────────
+        X_tr_seq, y_tr_seq = create_sequences(X_train, y_train, self.seq_len, self.horizon)
+        X_val_seq, y_val_seq = create_sequences(X_val,   y_val,   self.seq_len, self.horizon)
+        X_ts_seq, y_ts_seq = create_sequences(X_test,   y_test,   self.seq_len, self.horizon)
 
         extra = {
-            "df_test": df.iloc[train_size:].reset_index(drop=True),
+            "df_test": df.iloc[val_end:].reset_index(drop=True),  # 改成测试段
             "feature_cols": feature_cols,
             "scaler_X": self.scaler_X,
             "scaler_demand": self.scaler_demand,
             "scaler_price": self.scaler_price,
+            "X_test_seq": X_ts_seq,
+            "y_test_seq": y_ts_seq,          # 新增，便于评估
         }
 
-        #return X_train, y_train, X_test, y_test, extra
+        print("Demand 训练集范围:", y_train_raw[:,0].min(), "→", y_train_raw[:,0].max())
+        print("Price  训练集范围:", y_train_raw[:,1].min(), "→", y_train_raw[:,1].max())
 
-        print("正在创建滑动窗口序列...")
+        # 传给 config（main.py 会用）
+        self.config.update({
+            'demand_min': float(y_train_raw[:,0].min()),
+            'demand_max': float(y_train_raw[:,0].max()),
+            'price_min':  float(y_train_raw[:,1].min()),
+            'price_max':  float(y_train_raw[:,1].max()),
+        })
 
-        X_train_seq, y_train_seq = create_sequences(
-            X_train, y_train,
-            seq_length=self.seq_len,      # 336
-            pred_length=self.horizon      # 48
-        )
-
-        X_test_seq, y_test_seq = create_sequences(
-            X_test, y_test,
-            seq_length=self.seq_len,
-            pred_length=self.horizon
-        )
-
-        print(f"训练序列数量: {len(X_train_seq)}, 测试序列数量: {len(X_test_seq)}")
-        print(f"输入形状示例: {X_train_seq.shape}")   # 应为 (n_seq, 336, 9)
-
-        extra["X_test_seq"] = X_test_seq   # 如果后续滚动预测需要
-
-        return X_train_seq, y_train_seq, X_test_seq, y_test_seq, extra, X_test
+        return X_tr_seq, y_tr_seq, X_ts_seq, y_ts_seq, extra, X_test_raw
 
     def rolling_forecast_and_evaluate(self, model, X_test, y_test, extra: Dict, device="cpu"):
         """
@@ -163,12 +166,18 @@ class NextDay48HalfHoursRRP(BaseForecastTask):
         # Demand
         mae_d  = mean_absolute_error(demand_true, demand_pred)
         rmse_d = np.sqrt(mean_squared_error(demand_true, demand_pred))
-        mape_d = np.mean(np.abs((demand_true - demand_pred) / (demand_true + 1e-3))) * 100
+        
+        # Demand MAPE
+        mask_d = np.abs(demand_true) > 1000   # 负荷低于1000MW视为异常/不计算
+        mape_d = np.mean(np.abs((demand_true - demand_pred)[mask_d] / demand_true[mask_d])) * 100 if mask_d.sum() > 0 else np.nan
 
         # Price
         mae_p  = mean_absolute_error(price_true, price_pred)
         rmse_p = np.sqrt(mean_squared_error(price_true, price_pred))
-        mape_p = np.mean(np.abs((price_true - price_pred) / (price_true + 1e-3))) * 100
+
+        # Price MAPE（电力价格可能接近0甚至负）
+        mask_p = np.abs(price_true) > 5.0
+        mape_p = np.mean(np.abs((price_true - price_pred)[mask_p] / price_true[mask_p])) * 100 if mask_p.sum() > 0 else np.nan
 
         print("\nEvaluation (full 48-step direct forecasting):")
         print("─" * 60)
