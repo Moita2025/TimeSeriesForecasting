@@ -26,6 +26,22 @@ model_configs = {
         "num_layers":     2,
         "dropout":        0.20,
     },
+    "dnn": {
+        "hidden_sizes": [256, 128, 64],
+        "dropout":      0.20,
+        "seq_len":        336,
+        # 可選：若想強制不同於其他模型的 dropout，可在此覆寫
+    },
+    "itransformer": {
+        "dim":                    512,
+        "depth":                  4,      # 先用較小值測試，資源允許可調到 6~8
+        "heads":                  8,
+        "dim_head":               64,
+        "num_tokens_per_variate": 1,
+        # "dropout":                0.1,
+        "seq_len":        336,
+        # "use_reversible_instance_norm": False,  # 若 lucidrains 版本支援，可加
+    },
 }
 
 # 自动生成 model_accepted_keys

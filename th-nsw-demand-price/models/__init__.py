@@ -4,6 +4,8 @@ from .cnn_gru import CNNGRUForecaster
 from .bilstm  import BiLSTMForecaster
 from .tpa_bilstm import TPABiLSTMForecaster
 from .am_bilstm  import AMBiLSTMForecaster
+from .dnn import DNNForecaster
+from .itransformer import iTransformerForecaster
 
 # 未來新增模型就 import 進來，例如：
 # from .transformer import TransformerForecaster
@@ -79,6 +81,20 @@ def create_model(
         )
     elif model_type_lower == "am_bilstm":
         return AMBiLSTMForecaster(
+            input_size = input_size, 
+            horizon = horizon, 
+            n_targets = n_targets, 
+            **model_kwargs
+        )
+    elif model_type_lower == "dnn":
+        return DNNForecaster(
+            input_size = input_size, 
+            horizon = horizon, 
+            n_targets = n_targets, 
+            **model_kwargs
+        )
+    elif model_type_lower == "itransformer":
+        return iTransformerForecaster(
             input_size = input_size, 
             horizon = horizon, 
             n_targets = n_targets, 
