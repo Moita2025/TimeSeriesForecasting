@@ -40,7 +40,7 @@ class BaseForecastTask:
         return df
     
     def train_model(model, train_loader, val_loader, epochs=80, lr=0.001, patience=15,
-                grad_clip=1.0, device = torch.device("cpu")):
+                    grad_clip=1.0, device=torch.device("cpu")):
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         criterion = nn.MSELoss()
 
@@ -54,15 +54,10 @@ class BaseForecastTask:
             for Xb, yb in train_loader:
                 Xb, yb = Xb.to(device), yb.to(device)
                 optimizer.zero_grad()
-                """
-                pred = model(Xb)
-                loss = criterion(pred, yb)
-                """
-                # 在 train_model 函数里，计算 loss 前加一行
-                pred = model(Xb)
-                yb_last = yb[:, -1, :]          # 只看第 48 步（或改成 [:, 0, :] 只看第一步）
-                loss = criterion(pred, yb_last)
-
+                
+                pred = model(Xb)                  # 现在 pred 是 (batch, 48, 2)
+                loss = criterion(pred, yb)        # 直接对比完整序列！！
+                
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
                 optimizer.step()
@@ -75,15 +70,9 @@ class BaseForecastTask:
             with torch.no_grad():
                 for Xb, yb in val_loader:
                     Xb, yb = Xb.to(device), yb.to(device)
-                    """
                     pred = model(Xb)
-                    loss = criterion(pred, yb)
-                    """
-                    # 在 train_model 函数里，计算 loss 前加一行
-                    pred = model(Xb)
-                    yb_last = yb[:, -1, :]          # 只看第 48 步（或改成 [:, 0, :] 只看第一步）
-
-                    loss = criterion(pred, yb_last)
+                    loss = criterion(pred, yb)    # 同样直接对比完整 48 步
+                    
                     val_loss += loss.item() * Xb.size(0)
 
             val_loss /= len(val_loader.dataset)

@@ -11,9 +11,12 @@ class CNNGRUForecaster(nn.Module):
         self.num_cnn_filters= config.get('num_cnn_filters', 64)
         self.kernel_size    = config.get('kernel_size', 3)
         self.dropout        = config.get('dropout', 0.2)
-        self.output_size    = config.get('output_size', 2)      # 默认改为 2（demand + price）
         self.bidirectional  = config.get('bidirectional', False)
         self.use_pool       = config.get('use_pool', False)
+
+        # 输出维度改为 48 × 2
+        self.horizon        = config.get('horizon', 48)
+        self.output_size    = 2 * self.horizon   # 96
 
         # CNN 部分
         self.conv1 = nn.Conv1d(
@@ -41,8 +44,12 @@ class CNNGRUForecaster(nn.Module):
         # 输出层维度调整
         gru_output_dim = self.hidden_size * (2 if self.bidirectional else 1)
         self.dropout_layer = nn.Dropout(self.dropout)
+        
+        # 改成输出完整的 horizon × targets
         self.fc = nn.Linear(gru_output_dim, self.output_size)
-        self.softplus = nn.Softplus()   # 可选，视任务而定（负荷/价格不一定需要）
+        
+        # 暂时保留 softplus，但强烈建议后续移除（价格可以负）
+        # self.softplus = nn.Softplus()
 
     def forward(self, x):
         # x: (batch, seq_len, features)
@@ -59,7 +66,10 @@ class CNNGRUForecaster(nn.Module):
         out = gru_out[:, -1, :]          # 最后时间步
         
         out = self.dropout_layer(out)
-        out = self.fc(out)
-        out = self.softplus(out)         # 可注释掉，视任务
+        out = self.fc(out)              
         
+        # reshape 成 (batch, horizon, targets)
+        out = out.view(-1, self.horizon, 2)
+        
+        # self.softplus(out)             # 建议注释掉或删除
         return out
