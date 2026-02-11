@@ -3,7 +3,7 @@ from typing import List, Dict, Optional
 
 from data_module.nsw_datamodule_halfhour import NSWHalfHourDataModule
 from trainer import train_model
-from rolling_eval import evaluate_rolling_forecast
+from rolling_eval import predict_rolling_windows, compute_forecast_metrics
 from tasks.next_48h_forecast import Next48HalfHoursForecastTask
 from config import model_configs
 from models import create_model
@@ -89,8 +89,8 @@ def run_single_model(
         device=device,
     )
 
-    # 滾動評估
-    metrics, preds_phys, acts_phys = evaluate_rolling_forecast(
+    # ── 预测 + 反归一化 ────────────────────────────────────────
+    raw_preds_phys, acts_phys = predict_rolling_windows(
         model=trained_model,
         X_test_seq=datamodule.X_test_seq,
         y_test_seq=datamodule.y_test_seq,
@@ -98,15 +98,30 @@ def run_single_model(
         scaler_price=datamodule.scaler_price,
         device=device,
         batch_size=128,
-        mask_demand_min=task.eval_mask["demand"]["min_value"],
-        mask_price_min=task.eval_mask["price"]["min_value"],
     )
 
-    # 任務特定後處理
-    preds_processed = task.postprocess_predictions(preds_phys)
+    # ── 任务特定的后处理（bias correction, clip 等） ────────────
+    preds_processed = task.postprocess_predictions(raw_preds_phys)
+
+    metrics_before = compute_forecast_metrics(
+        predictions=raw_preds_phys,
+        actuals=acts_phys,
+        mask_demand_min=task.eval_mask["demand"]["min_value"],
+        mask_price_min=task.eval_mask["price"]["min_value"],
+        print_summary=True,               # 或设为 False，交给 task.format_metrics 统一打印
+    )
+
+    # ── 计算最终指标（基于后处理后的预测） ─────────────────────
+    metrics_after = compute_forecast_metrics(
+        predictions=preds_processed,
+        actuals=acts_phys,
+        mask_demand_min=task.eval_mask["demand"]["min_value"],
+        mask_price_min=task.eval_mask["price"]["min_value"],
+        print_summary=True,               # 或设为 False，交给 task.format_metrics 统一打印
+    )
 
     # 顯示結果（或存檔、畫圖）
-    print("\n" + task.format_metrics(metrics))
+    # print("\n" + task.format_metrics(metrics))
 
     # 可選：儲存預測結果、畫圖等
     # save_predictions(preds_processed, acts_phys, f"results/{model_type}/")

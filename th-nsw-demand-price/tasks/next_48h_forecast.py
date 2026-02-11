@@ -24,9 +24,15 @@ class Next48HalfHoursForecastTask:
         self.eval_metrics = ["mae", "rmse", "mape"]
         
         # 可選：後處理規則
+        # ── 新增：经验性 bias correction（模型普遍低估 ≈10%） ──
         self.postprocess_rules = {
-            "demand": {"clip_min": 0.0},      # 需求不應該為負
-            "price":  {}                      # 價格允許負值（真實情況有負價）
+            "demand": {
+                "clip_min": 0.0,
+                "multiplicative_bias": 1.10,   # ← 这里改成你实际观察到的比例
+            },
+            "price": {
+                "multiplicative_bias": 1.10,   # 如果价格也低估就一起开，否则删掉这行
+            }
         }
 
     def get_task_signature(self) -> str:
@@ -45,12 +51,19 @@ class Next48HalfHoursForecastTask:
         """
         preds = predictions.copy()
         
-        # demand clip
+        # Demand
         if "demand" in self.postprocess_rules:
-            min_val = self.postprocess_rules["demand"].get("clip_min", 0.0)
-            preds[..., 0] = np.maximum(preds[..., 0], min_val)
-            
-        # price 可以保留負值，不做 clip
+            rules = self.postprocess_rules["demand"]
+            if "multiplicative_bias" in rules:
+                preds[..., 0] *= rules["multiplicative_bias"]          # ← 关键一行
+            if "clip_min" in rules:
+                preds[..., 0] = np.maximum(preds[..., 0], rules["clip_min"])
+
+        # Price
+        if "price" in self.postprocess_rules:
+            rules = self.postprocess_rules["price"]
+            if "multiplicative_bias" in rules:
+                preds[..., 1] *= rules["multiplicative_bias"]          # ← 关键一行
         
         return preds
 

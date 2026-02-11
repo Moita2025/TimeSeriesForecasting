@@ -5,7 +5,7 @@ import torch
 from typing import Dict, Tuple
 
 
-def evaluate_rolling_forecast(
+def predict_rolling_windows(
     model: torch.nn.Module,
     X_test_seq: np.ndarray,           # (n_windows, seq_len, n_features) scaled
     y_test_seq: np.ndarray,           # (n_windows, horizon, 2) scaled
@@ -14,21 +14,15 @@ def evaluate_rolling_forecast(
     device: torch.device = torch.device("cpu"),
     batch_size: int = 128,
     desc: str = "Batch inference on test set",
-    mask_demand_min: float = 1000.0,   # demand MAPE 時忽略太小的值
-    mask_price_min: float = 5.0,       # price MAPE 時忽略接近 0 或負值
-) -> Tuple[Dict[str, Dict[str, float]], np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    對測試集的所有滾動窗口進行批量預測、反歸一化，並計算指標
+    对测试集的所有滚动窗口进行批量预测 + 反归一化
+    只返回物理单位的预测和真实值，不计算指标
 
     返回:
-        metrics: {
-            "demand": {"mae": ..., "rmse": ..., "mape": ...},
-            "price":  {"mae": ..., "rmse": ..., "mape": ...}
-        }
         predictions: (n_windows, horizon, 2) physical unit
         actuals:     (n_windows, horizon, 2) physical unit
     """
-
     model.eval()
     model.to(device)
 
@@ -43,15 +37,17 @@ def evaluate_rolling_forecast(
 
             pred_scaled = model(Xb).cpu().numpy()          # (b, horizon, 2)
 
-            # 反歸一化
+            # 反归一化 demand
             pred_d = scaler_demand.inverse_transform(
                 pred_scaled[..., 0].reshape(-1, 1)
             ).reshape(-1, pred_scaled.shape[1])
 
+            # 反归一化 price
             pred_p = scaler_price.inverse_transform(
                 pred_scaled[..., 1].reshape(-1, 1)
             ).reshape(-1, pred_scaled.shape[1])
 
+            # 真实值反归一化
             true_d = scaler_demand.inverse_transform(
                 y_test_seq[i:end, :, 0].reshape(-1, 1)
             ).reshape(-1, y_test_seq.shape[1])
@@ -66,7 +62,26 @@ def evaluate_rolling_forecast(
     predictions = np.concatenate(all_pred, axis=0)   # (total_windows, horizon, 2)
     actuals     = np.concatenate(all_true, axis=0)
 
-    # ── 計算指標（展平所有步驟） ────────────────────────────────────────
+    return predictions, actuals
+
+def compute_forecast_metrics(
+    predictions: np.ndarray,          # (n_windows, horizon, 2) physical
+    actuals: np.ndarray,              # (n_windows, horizon, 2) physical
+    mask_demand_min: float = 1000.0,
+    mask_price_min: float = 5.0,
+    print_summary: bool = True,
+) -> Dict[str, Dict[str, float]]:
+    """
+    计算需求和价格的 MAE / RMSE / MAPE / mean_actual / mean_pred
+    支持 masked MAPE
+
+    返回:
+        metrics: {
+            "demand": {"mae": ..., "rmse": ..., "mape": ..., "mean_actual": ..., "mean_pred": ...},
+            "price":  {...}
+        }
+    """
+    # 展平所有步驟
     demand_true = actuals[..., 0].ravel()
     demand_pred = predictions[..., 0].ravel()
     price_true  = actuals[..., 1].ravel()
@@ -105,21 +120,21 @@ def evaluate_rolling_forecast(
         }
     }
 
-    # 簡單印出結果（之後可改成 logger 或回傳給 caller 決定怎麼顯示）
-    print("\n" + "="*70)
-    print("Evaluation (all 48 steps, physical units):")
-    print("-"*70)
-    print("Demand:")
-    print(f"  MAE  = {mae_d:8.2f} MW")
-    print(f"  RMSE = {rmse_d:8.2f} MW")
-    print(f"  MAPE = {mape_d:6.2f}% (masked)" if not np.isnan(mape_d) else "  MAPE = N/A")
-    print(f"  Mean actual: {demand_true.mean():8.2f}   Mean pred: {demand_pred.mean():8.2f}")
-    print()
-    print("Price (RRP):")
-    print(f"  MAE  = {mae_p:8.2f} $/MWh")
-    print(f"  RMSE = {rmse_p:8.2f} $/MWh")
-    print(f"  MAPE = {mape_p:6.2f}% (masked)" if not np.isnan(mape_p) else "  MAPE = N/A")
-    print(f"  Mean actual: {price_true.mean():8.2f}   Mean pred: {price_pred.mean():8.2f}")
-    print("="*70 + "\n")
+    if print_summary:
+        print("\n" + "="*70)
+        print("Evaluation (all 48 steps, physical units):")
+        print("-"*70)
+        print("Demand:")
+        print(f"  MAE  = {mae_d:8.2f} MW")
+        print(f"  RMSE = {rmse_d:8.2f} MW")
+        print(f"  MAPE = {mape_d:6.2f}% (masked)" if not np.isnan(mape_d) else "  MAPE = N/A")
+        print(f"  Mean actual: {demand_true.mean():8.2f}   Mean pred: {demand_pred.mean():8.2f}")
+        print()
+        print("Price (RRP):")
+        print(f"  MAE  = {mae_p:8.2f} $/MWh")
+        print(f"  RMSE = {rmse_p:8.2f} $/MWh")
+        print(f"  MAPE = {mape_p:6.2f}% (masked)" if not np.isnan(mape_p) else "  MAPE = N/A")
+        print(f"  Mean actual: {price_true.mean():8.2f}   Mean pred: {price_pred.mean():8.2f}")
+        print("="*70 + "\n")
 
-    return metrics, predictions, actuals
+    return metrics
