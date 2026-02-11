@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>NSW 48小時預測 - 前處理 vs 後處理性能比較</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 1200px;
+            margin: 30px auto;
+            font-family: Arial, sans-serif;
+            font-size: 0.95em;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 9px;
+            text-align: center;
+        }
+        th {
+            background-color: #e8f0fe;
+            font-weight: bold;
+        }
+        caption {
+            font-size: 1.3em;
+            padding: 12px;
+            font-weight: bold;
+            caption-side: top;
+            color: #333;
+        }
+        .model-name {
+            background-color: #d1e7ff;
+            font-weight: bold;
+            vertical-align: middle;
+        }
+        .stage-before {
+            background-color: #fff8e1;
+        }
+        .stage-after {
+            background-color: #e8f5e9;
+        }
+        .better {
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .worse {
+            color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+
+<h2 style="text-align:center; margin:20px;">TH-NSW Demand & Price 模型評估 - Before vs After Post-processing</h2>
+
+<table>
+    <caption>多模型滾動預測性能比較（預測長度：48步，測試集物理單位）</caption>
+    <thead>
+        <tr>
+            <th rowspan="2">模型名稱</th>
+            <th rowspan="2">階段</th>
+            <th colspan="5">Demand (MW)</th>
+            <th colspan="5">Price (RRP $/MWh)</th>
+        </tr>
+        <tr>
+            <th>MAE</th><th>RMSE</th><th>MAPE</th><th>Mean actual</th><th>Mean pred</th>
+            <th>MAE</th><th>RMSE</th><th>MAPE</th><th>Mean actual</th><th>Mean pred</th>
+        </tr>
+    </thead>
+    <tbody>
+
+        <!-- CNN_GRU -->
+        <tr>
+            <td rowspan="2" class="model-name">CNN_GRU</td>
+            <td class="stage-before">Before postprocess</td>
+            <td>923.07</td><td>1153.43</td><td>10.38%</td><td>8494.04</td><td>7741.90</td>
+            <td>6.95</td><td>12.13</td><td>10.92%</td><td>55.76</td><td>51.97</td>
+        </tr>
+        <tr class="stage-after">
+            <td>After postprocess</td>
+            <td class="better">719.56</td><td class="better">887.72</td><td class="better">8.52%</td><td>8494.04</td><td>8516.09</td>
+            <td>7.54</td><td class="better">11.70</td><td>12.83%</td><td>55.76</td><td>57.17</td>
+        </tr>
+
+        <!-- BILSTM -->
+        <tr>
+            <td rowspan="2" class="model-name">BILSTM</td>
+            <td class="stage-before">Before postprocess</td>
+            <td>1435.55</td><td>1690.77</td><td>16.22%</td><td>8494.04</td><td>7159.66</td>
+            <td>12.89</td><td>17.43</td><td>21.19%</td><td>55.76</td><td>43.75</td>
+        </tr>
+        <tr class="stage-after">
+            <td>After postprocess</td>
+            <td class="better">986.67</td><td class="better">1236.34</td><td class="better">11.12%</td><td>8494.04</td><td>7875.62</td>
+            <td class="better">10.18</td><td class="better">14.99</td><td class="better">16.49%</td><td>55.76</td><td>48.12</td>
+        </tr>
+
+        <!-- AM_BILSTM -->
+        <tr>
+            <td rowspan="2" class="model-name">AM_BILSTM</td>
+            <td class="stage-before">Before postprocess</td>
+            <td class="better">900.51</td><td class="better">1070.20</td><td class="better">10.88%</td><td>8494.04</td><td>8791.83</td>
+            <td>12.50</td><td>16.23</td><td>22.71%</td><td>55.76</td><td>64.97</td>
+        </tr>
+        <tr class="stage-after">
+            <td>After postprocess</td>
+            <td>1316.94</td><td>1596.90</td><td>16.27%</td><td>8494.04</td><td>9671.01</td>
+            <td>17.91</td><td>20.97</td><td>33.26%</td><td>55.76</td><td>71.47</td>
+        </tr>
+
+        <!-- TPA_BILSTM -->
+        <tr>
+            <td rowspan="2" class="model-name">TPA_BILSTM</td>
+            <td class="stage-before">Before postprocess</td>
+            <td class="better">1066.88</td><td class="better">1350.46</td><td class="better">12.16%</td><td>8494.04</td><td>8054.47</td>
+            <td class="better">10.75</td><td class="better">15.53</td><td class="better">17.88%</td><td>55.76</td><td>52.70</td>
+        </tr>
+        <tr class="stage-after">
+            <td>After postprocess</td>
+            <td>1094.65</td><td>1408.36</td><td>12.87%</td><td>8494.04</td><td>8859.92</td>
+            <td>11.80</td><td>16.07</td><td>20.38%</td><td>55.76</td><td>57.96</td>
+        </tr>
+
+        <!-- ITRANSFORMER -->
+        <tr>
+            <td rowspan="2" class="model-name">ITRANSFORMER</td>
+            <td class="stage-before">Before postprocess</td>
+            <td class="better">981.78</td><td class="better">1418.04</td><td class="better">11.98%</td><td>8494.04</td><td>8352.65</td>
+            <td>8.45</td><td>13.30</td><td>13.51%</td><td>55.76</td><td>49.05</td>
+        </tr>
+        <tr class="stage-after">
+            <td>After postprocess</td>
+            <td>1218.41</td><td>1599.07</td><td>14.43%</td><td>8494.04</td><td>9201.38</td>
+            <td class="better">7.17</td><td class="better">11.78</td><td class="better">11.66%</td><td>55.76</td><td>53.95</td>
+        </tr>
+
+        <!-- DNN -->
+        <tr>
+            <td rowspan="2" class="model-name">DNN</td>
+            <td class="stage-before">Before postprocess</td>
+            <td>1517.84</td><td>1810.23</td><td>16.96%</td><td>8494.04</td><td>7045.60</td>
+            <td>8.16</td><td>13.72</td><td>12.66%</td><td>55.76</td><td>48.80</td>
+        </tr>
+        <tr class="stage-after">
+            <td>After postprocess</td>
+            <td class="better">1058.46</td><td class="better">1333.55</td><td class="better">11.89%</td><td>8494.04</td><td>7750.16</td>
+            <td class="better">7.08</td><td class="better">12.12</td><td class="better">11.36%</td><td>55.76</td><td>53.68</td>
+        </tr>
+
+    </tbody>
+</table>
+
+<p style="text-align:center; margin-top:40px; color:#555;">
+    綠色數字表示該指標在後處理後變好（越小越好）<br>
+    數據來源：2025年執行日誌（測試集全部48步平均）
+</p>
+
+</body>
+</html>

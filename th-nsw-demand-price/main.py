@@ -120,6 +120,22 @@ def run_single_model(
         print_summary=True,               # 或设为 False，交给 task.format_metrics 统一打印
     )
 
+    # 收集用來產生最終表格的資料
+    result_entry_before = {
+        "model": model_type.upper(),
+        "stage": "Before postprocess",
+        "demand": metrics_before["demand"],
+        "price": metrics_before["price"]
+    }
+    result_entry_after = {
+        "model": model_type.upper(),
+        "stage": "After postprocess",
+        "demand": metrics_after["demand"],
+        "price": metrics_after["price"]
+    }
+
+    return result_entry_before, result_entry_after
+
     # 顯示結果（或存檔、畫圖）
     # print("\n" + task.format_metrics(metrics))
 
@@ -165,22 +181,35 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"使用裝置：{device}")
+    all_comparison_results = []
 
     # ── 逐一訓練與評估每個模型 ─────────────────────────────────
     for model_type in model_types:
         try:
-            run_single_model(
+            metrics_before, metrics_after = run_single_model(
                 model_type=model_type,
                 datamodule=datamodule,
                 task=task,
                 common_config=common_config,
                 device=device,
             )
+            all_comparison_results.append(metrics_before)
+            all_comparison_results.append(metrics_after)
         except Exception as e:
             print(f"\n❌ 模型 {model_type} 執行失敗：{e}\n")
             import traceback
             traceback.print_exc()
             print("-"*80)
+
+    from metrics_formatter import format_metrics_to_html
+
+    print(all_comparison_results)
+
+    format_metrics_to_html(
+        all_results=all_comparison_results,
+        output_file="results/nsw_1year_before_after.html",
+        title="NSW 48小時滾動預測 - 前/後處理性能對比"
+    )
 
 
 if __name__ == "__main__":
